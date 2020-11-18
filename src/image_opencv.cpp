@@ -1015,6 +1015,32 @@ extern "C" void draw_detections_cv_v3(mat_cv* mat, detection *dets, int num, flo
         cerr << "OpenCV exception: draw_detections_cv_v3() \n";
     }
 }
+
+extern "C" void draw_filled_rectangle(mat_cv* mat, int x1, int y1, int x2, int y2, unsigned char *color_array){
+    cv::Scalar color;
+    color.val[0] = color_array[0];
+    color.val[1] = color_array[1];
+    color.val[2] = color_array[2];
+
+    cv::Mat *target = (cv::Mat*)mat;
+    cv::Point pt1, pt2;
+    pt1.x = x1;
+    pt1.y = y1;
+    pt2.x = x2;
+    pt2.y = y2;
+    cv::rectangle(*target, pt1, pt2, color, CV_FILLED, 8, 0);
+}
+
+extern "C" void draw_black_rectangle(image* img, int x1, int y1, int x2, int y2){
+    for (int y = 0; y < img->h; ++y) {
+        for (int x = 0; x < img->w; ++x) {
+            for (int c = 0; c < img->c; ++c) {
+                if (x >= x1 && x <= x2 && y >= y1 && y <= y2)
+                    img->data[c*img->h*img->w + y*img->w + x] = 0;
+            }
+        }
+    }
+}
 // ----------------------------------------
 
 // ====================================================================

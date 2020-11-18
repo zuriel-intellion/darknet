@@ -714,7 +714,7 @@ void validate_detector(char *datacfg, char *cfgfile, char *weightfile, char *out
     int t;
 
     float thresh = .001;
-    float nms = .6;
+    float nms = .45;
 
     int nthreads = 4;
     if (m < 4) nthreads = m;
@@ -968,7 +968,6 @@ float validate_detector_map(char *datacfg, char *cfgfile, char *weightfile, floa
         paths_dif = (char **)list_to_array(plist_dif);
     }
 
-
     layer l = net.layers[net.n - 1];
     int k;
     for (k = 0; k < net.n; ++k) {
@@ -1043,8 +1042,30 @@ float validate_detector_map(char *datacfg, char *cfgfile, char *weightfile, floa
             const int image_index = i + t - nthreads;
             char *path = paths[image_index];
             char *id = basecfg(path);
-            float *X = val_resized[t].data;
-            network_predict(net, X);
+
+            char labelpath[4096];
+            replace_image_to_label(path, labelpath);
+            int num_labels = 0;
+            box_label *truth = NULL;
+
+            int num_iz = 0;
+            box_label *igz = NULL;
+
+            read_boxes_with_ignore_zones(labelpath, &num_labels, &num_iz, &truth, &igz);
+
+            for (int i = 0; i < num_iz; ++i)
+            {
+                int x1, y1, x2, y2;
+
+                x1 = igz[i].left*val_resized[t].w;
+                y1 = igz[i].top*val_resized[t].h;
+                x2 = igz[i].right*val_resized[t].w;
+                y2 = igz[i].bottom*val_resized[t].h;
+
+                draw_black_rectangle(&val_resized[t], x1, y1,x2,y2);
+            }
+
+            network_predict(net, val_resized[t].data);
 
             int nboxes = 0;
             float hier_thresh = 0;
@@ -1061,14 +1082,7 @@ float validate_detector_map(char *datacfg, char *cfgfile, char *weightfile, floa
                 else diounms_sort(dets, nboxes, l.classes, nms, l.nms_kind, l.beta_nms);
             }
 
-            //if (l.embedding_size) set_track_id(dets, nboxes, thresh, l.sim_thresh, l.track_ciou_norm, l.track_history_size, l.dets_for_track, l.dets_for_show);
-
-            char labelpath[4096];
-            replace_image_to_label(path, labelpath);
-            int num_labels = 0;
-            box_label *truth = read_boxes(labelpath, &num_labels);
-            int j;
-            for (j = 0; j < num_labels; ++j) {
+            for (int j = 0; j < num_labels; ++j) {
                 truth_classes_count[truth[j].id]++;
             }
 
